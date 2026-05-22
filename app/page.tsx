@@ -126,11 +126,15 @@ export default function AnalyzePage() {
       setAnalysis(aiData.result);
 
       if (user) {
-        saveHistoryEntry(user.uid, {
-          resumeFileName: resumeFile.name,
-          jobDescription,
-          result: aiData.result,
-        });
+        try {
+          await saveHistoryEntry(user.uid, {
+            resumeFileName: resumeFile.name,
+            jobDescription,
+            result: aiData.result,
+          });
+        } catch (error) {
+          console.error("Failed to save analysis history:", error);
+        }
       }
     } finally {
       setLoading(false);
