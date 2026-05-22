@@ -1,47 +1,77 @@
+import {
+  addDoc,
+  collection,
+  deleteDoc,
+  doc,
+  getDocs,
+  limit,
+  orderBy,
+  query,
+  writeBatch,
+  type DocumentData,
+} from "firebase/firestore";
+import { db } from "@/lib/firebase";
 import type { AnalysisResult, HistoryEntry } from "@/lib/types";
 
-const STORAGE_KEY_PREFIX = "resume-analyzer-history";
 const MAX_ENTRIES = 50;
 
-function getStorageKey(userId: string) {
-  return `${STORAGE_KEY_PREFIX}:${userId}`;
+function historyCollection(userId: string) {
+  return collection(db, "users", userId, "history");
 }
 
-export function getHistory(userId: string): HistoryEntry[] {
-  if (typeof window === "undefined") return [];
-
-  try {
-    const raw = localStorage.getItem(getStorageKey(userId));
-    if (!raw) return [];
-    const parsed = JSON.parse(raw) as HistoryEntry[];
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
+function normalizeHistoryEntry(id: string, data: DocumentData): HistoryEntry {
+  return {
+    id,
+    createdAt: typeof data.createdAt === "string" ? data.createdAt : new Date().toISOString(),
+    resumeFileName: data.resumeFileName,
+    jobDescription: data.jobDescription,
+    result: data.result,
+  };
 }
 
-export function saveHistoryEntry(
+export async function getHistory(userId: string): Promise<HistoryEntry[]> {
+  const historyQuery = query(
+    historyCollection(userId),
+    orderBy("createdAt", "desc"),
+    limit(MAX_ENTRIES)
+  );
+  const snapshot = await getDocs(historyQuery);
+
+  return snapshot.docs.map((historyDoc) =>
+    normalizeHistoryEntry(historyDoc.id, historyDoc.data())
+  );
+}
+
+export async function saveHistoryEntry(
   userId: string,
   entry: Omit<HistoryEntry, "id" | "createdAt">
-): HistoryEntry {
-  const newEntry: HistoryEntry = {
+): Promise<HistoryEntry> {
+  const createdAt = new Date().toISOString();
+  const docRef = await addDoc(historyCollection(userId), {
     ...entry,
-    id: crypto.randomUUID(),
-    createdAt: new Date().toISOString(),
+    createdAt,
+  });
+
+  return {
+    ...entry,
+    id: docRef.id,
+    createdAt,
   };
-
-  const history = [newEntry, ...getHistory(userId)].slice(0, MAX_ENTRIES);
-  localStorage.setItem(getStorageKey(userId), JSON.stringify(history));
-  return newEntry;
 }
 
-export function deleteHistoryEntry(userId: string, id: string) {
-  const history = getHistory(userId).filter((entry) => entry.id !== id);
-  localStorage.setItem(getStorageKey(userId), JSON.stringify(history));
+export async function deleteHistoryEntry(userId: string, id: string) {
+  await deleteDoc(doc(db, "users", userId, "history", id));
 }
 
-export function clearHistory(userId: string) {
-  localStorage.removeItem(getStorageKey(userId));
+export async function clearHistory(userId: string) {
+  const snapshot = await getDocs(historyCollection(userId));
+  const batch = writeBatch(db);
+
+  snapshot.docs.forEach((historyDoc) => {
+    batch.delete(historyDoc.ref);
+  });
+
+  await batch.commit();
 }
 
 export function buildReportText(

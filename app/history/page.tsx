@@ -32,43 +32,158 @@ export default function HistoryPage() {
   const { user } = useAuth();
   const [entries, setEntries] = useState<HistoryEntry[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   useEffect(() => {
-    if (!user) return;
-    setEntries(getHistory(user.uid));
+    if (!user) {
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadHistory() {
+      setHistoryLoading(true);
+
+      try {
+        const history = await getHistory(user.uid);
+        if (!cancelled) setEntries(history);
+      } catch (error) {
+        console.error("Failed to load analysis history:", error);
+        if (!cancelled) setEntries([]);
+      } finally {
+        if (!cancelled) setHistoryLoading(false);
+      }
+    }
+
+    loadHistory();
+
+    return () => {
+      cancelled = true;
+    };
   }, [user]);
 
-  const selectedEntry = entries.find((entry) => entry.id === selectedId) ?? null;
+  const visibleEntries = user ? entries : [];
+  const selectedEntry = visibleEntries.find((entry) => entry.id === selectedId) ?? null;
 
-  function refreshHistory() {
+  async function refreshHistory() {
     if (!user) return;
-    setEntries(getHistory(user.uid));
+    setEntries(await getHistory(user.uid));
   }
 
-  function handleDelete(id: string) {
+  async function handleDelete(id: string) {
     if (!user) return;
-    deleteHistoryEntry(user.uid, id);
+    await deleteHistoryEntry(user.uid, id);
     if (selectedId === id) setSelectedId(null);
-    refreshHistory();
+    await refreshHistory();
   }
 
-  function handleClearAll() {
+  async function handleClearAll() {
     if (!user) return;
     if (!confirm("Clear all analysis history?")) return;
-    clearHistory(user.uid);
+    await clearHistory(user.uid);
     setSelectedId(null);
-    refreshHistory();
+    await refreshHistory();
   }
 
   function handleSelect(id: string) {
     setSelectedId(id);
-    if (window.matchMedia("(max-width: 1023px)").matches) {
-      window.scrollTo({ top: 0, behavior: "smooth" });
+    if (globalThis.matchMedia("(max-width: 1023px)").matches) {
+      globalThis.scrollTo({ top: 0, behavior: "smooth" });
     }
   }
 
   function handleBackToList() {
     setSelectedId(null);
+  }
+
+  function renderHistoryList() {
+    if (historyLoading) {
+      return (
+        <Card className="py-10 text-center">
+          <p className="text-sm font-medium text-slate-900 dark:text-slate-100">Loading history...</p>
+        </Card>
+      );
+    }
+
+    if (visibleEntries.length === 0) {
+      return (
+        <Card className="py-10 text-center">
+          <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-violet-50 text-violet-500 dark:bg-violet-950/50 dark:text-violet-400">
+            <Clock className="h-5 w-5" />
+          </div>
+          <p className="text-sm font-medium text-slate-900 dark:text-slate-100">No history yet</p>
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+            Run an analysis and it will appear here.
+          </p>
+        </Card>
+      );
+    }
+
+    return (
+      <div className="space-y-2">
+        {visibleEntries.map((entry) => {
+          const isSelected = selectedId === entry.id;
+
+          return (
+            <div
+              key={entry.id}
+              className={`card p-4 transition-all duration-150 ${
+                isSelected
+                  ? "border-violet-200 ring-2 ring-violet-100 dark:border-violet-800 dark:ring-violet-900/50"
+                  : "card-hover"
+              }`}
+            >
+              <button
+                type="button"
+                onClick={() => handleSelect(entry.id)}
+                className="w-full text-left"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
+                      {entry.resumeFileName}
+                    </p>
+                    <p className="mt-0.5 text-xs text-slate-400 dark:text-slate-500">
+                      {formatDate(entry.createdAt)}
+                    </p>
+                  </div>
+                  <span
+                    className={`shrink-0 rounded-lg px-2 py-0.5 text-xs font-semibold tabular-nums ring-1 ring-inset ${scoreBadgeClass(entry.result.score)}`}
+                  >
+                    {entry.result.score}
+                  </span>
+                </div>
+                <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+                  {entry.jobDescription}
+                </p>
+                <p className="mt-2 text-xs font-medium text-violet-600 dark:text-violet-400">
+                  {entry.result.matchLabel}
+                </p>
+              </button>
+
+              <div className="mt-3 flex gap-2 border-t border-slate-100 pt-3 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => downloadReport(entry.result, entry.resumeFileName)}
+                  className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                >
+                  <Download className="h-3 w-3" />
+                  Download
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDelete(entry.id)}
+                  className="inline-flex items-center gap-1 rounded-lg border border-rose-100 px-2.5 py-1 text-xs font-medium text-rose-500 hover:bg-rose-50 dark:border-rose-900/50 dark:hover:bg-rose-950/50"
+                >
+                  <Trash2 className="h-3 w-3" />
+                  Delete
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
   }
 
   return (
@@ -83,9 +198,9 @@ export default function HistoryPage() {
           <div className="flex items-center justify-between px-0.5">
             <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-slate-400 dark:text-slate-500">
               <History className="h-3.5 w-3.5" />
-              {entries.length} reports
+              {visibleEntries.length} reports
             </p>
-            {entries.length > 0 && (
+            {visibleEntries.length > 0 && (
               <button
                 type="button"
                 onClick={handleClearAll}
@@ -97,81 +212,7 @@ export default function HistoryPage() {
             )}
           </div>
 
-          {entries.length === 0 ? (
-            <Card className="py-10 text-center">
-              <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-violet-50 text-violet-500 dark:bg-violet-950/50 dark:text-violet-400">
-                <Clock className="h-5 w-5" />
-              </div>
-              <p className="text-sm font-medium text-slate-900 dark:text-slate-100">No history yet</p>
-              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                Run an analysis and it will appear here.
-              </p>
-            </Card>
-          ) : (
-            <div className="space-y-2">
-              {entries.map((entry) => {
-                const isSelected = selectedId === entry.id;
-
-                return (
-                  <div
-                    key={entry.id}
-                    className={`card p-4 transition-all duration-150 ${
-                      isSelected
-                        ? "border-violet-200 ring-2 ring-violet-100 dark:border-violet-800 dark:ring-violet-900/50"
-                        : "card-hover"
-                    }`}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => handleSelect(entry.id)}
-                      className="w-full text-left"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
-                            {entry.resumeFileName}
-                          </p>
-                          <p className="mt-0.5 text-xs text-slate-400 dark:text-slate-500">
-                            {formatDate(entry.createdAt)}
-                          </p>
-                        </div>
-                        <span
-                          className={`shrink-0 rounded-lg px-2 py-0.5 text-xs font-semibold tabular-nums ring-1 ring-inset ${scoreBadgeClass(entry.result.score)}`}
-                        >
-                          {entry.result.score}
-                        </span>
-                      </div>
-                      <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-                        {entry.jobDescription}
-                      </p>
-                      <p className="mt-2 text-xs font-medium text-violet-600 dark:text-violet-400">
-                        {entry.result.matchLabel}
-                      </p>
-                    </button>
-
-                    <div className="mt-3 flex gap-2 border-t border-slate-100 pt-3 dark:border-slate-800">
-                      <button
-                        type="button"
-                        onClick={() => downloadReport(entry.result, entry.resumeFileName)}
-                        className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-                      >
-                        <Download className="h-3 w-3" />
-                        Download
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDelete(entry.id)}
-                        className="inline-flex items-center gap-1 rounded-lg border border-rose-100 px-2.5 py-1 text-xs font-medium text-rose-500 hover:bg-rose-50 dark:border-rose-900/50 dark:hover:bg-rose-950/50"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+          {renderHistoryList()}
         </div>
 
         <div className={selectedId ? "" : "hidden lg:block"}>
