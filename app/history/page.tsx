@@ -39,13 +39,14 @@ export default function HistoryPage() {
       return;
     }
 
+    const uid = user.uid;
     let cancelled = false;
 
     async function loadHistory() {
       setHistoryLoading(true);
 
       try {
-        const history = await getHistory(user.uid);
+        const history = await getHistory(uid);
         if (!cancelled) setEntries(history);
       } catch (error) {
         console.error("Failed to load analysis history:", error);
