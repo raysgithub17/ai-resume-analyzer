@@ -1,16 +1,170 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: var(--font-plus-jakarta), ui-sans-serif, system-ui, sans-serif;
+}
+
 :root {
-  --background: #f4f6f8;
-  --foreground: #111827;
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --muted: #64748b;
+  --border: #e2e8f0;
   --card: #ffffff;
   --primary: #6366f1;
   --primary-hover: #4f46e5;
-  --border: #e5e7eb;
-  --muted: #6b7280;
+  --primary-soft: #eef2ff;
+  --accent-glow: rgba(99, 102, 241, 0.08);
+  --input-bg: #f8fafc;
+  --input-focus-bg: #ffffff;
+  --sidebar: #ffffff;
+  --hover: #f8fafc;
+}
+
+.dark {
+  --background: #0b1120;
+  --foreground: #f1f5f9;
+  --muted: #94a3b8;
+  --border: #1e293b;
+  --card: #111827;
+  --primary-soft: #1e1b4b;
+  --accent-glow: rgba(99, 102, 241, 0.12);
+  --input-bg: #0f172a;
+  --input-focus-bg: #1e293b;
+  --sidebar: #0f172a;
+  --hover: #1e293b;
+  color-scheme: dark;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+.dark * {
+  scrollbar-color: #334155 transparent;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
+  font-family: var(--font-sans);
+  letter-spacing: -0.01em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+::selection {
+  background: #c7d2fe;
+  color: #312e81;
+}
+
+.dark ::selection {
+  background: #4338ca;
+  color: #e0e7ff;
+}
+
+.app-bg {
+  background-color: var(--background);
+  background-image:
+    radial-gradient(ellipse 80% 50% at 50% -20%, var(--accent-glow), transparent),
+    radial-gradient(ellipse 60% 40% at 100% 0%, rgba(167, 139, 250, 0.06), transparent);
+}
+
+.dark .app-bg {
+  background-image:
+    radial-gradient(ellipse 80% 50% at 50% -20%, var(--accent-glow), transparent),
+    radial-gradient(ellipse 60% 40% at 100% 0%, rgba(124, 58, 237, 0.08), transparent);
+}
+
+.card {
+  border-radius: 1rem;
+  border: 1px solid color-mix(in srgb, var(--border) 90%, transparent);
+  background: var(--card);
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 4px 16px rgba(15, 23, 42, 0.03);
+  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.dark .card {
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.2),
+    0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+.card-hover {
+  transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+.card-hover:hover {
+  border-color: color-mix(in srgb, var(--border) 70%, #94a3b8);
+  box-shadow:
+    0 2px 4px rgba(15, 23, 42, 0.05),
+    0 8px 24px rgba(15, 23, 42, 0.06);
+}
+
+.dark .card-hover:hover {
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.25),
+    0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.25);
+  transition: box-shadow 0.2s ease, transform 0.15s ease, opacity 0.2s ease;
+}
+
+.btn-primary:hover:not(:disabled) {
+  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.35);
+  transform: translateY(-1px);
+}
+
+.btn-primary:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.input-field {
+  border: 1px solid var(--border);
+  background: var(--input-bg);
+  color: var(--foreground);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.input-field::placeholder {
+  color: var(--muted);
+}
+
+.input-field:focus {
+  outline: none;
+  border-color: #a5b4fc;
+  background: var(--input-focus-bg);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+}
+
+.dark .input-field:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.35s ease-out both;
 }
