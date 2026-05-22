@@ -147,8 +147,10 @@ export default function AnalyzePage() {
 
         <input
           ref={fileInputRef}
+          id="resumeFile"
           type="file"
           accept=".pdf,application/pdf"
+          aria-label="Upload resume PDF"
           className="hidden"
           onChange={handleFileChange}
         />
@@ -188,10 +190,10 @@ export default function AnalyzePage() {
       </Card>
 
       <Card>
-        <div className="mb-4 flex items-center gap-2">
-          <FileText className="h-4 w-4 text-violet-500" />
-          <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200">2. Paste Job Description</h3>
-        </div>
+        <label htmlFor="jobDescription" className="mb-4 flex items-center gap-2">
+          <FileText className="h-4 w-4 text-violet-500" aria-hidden="true" />
+          <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">2. Paste Job Description</span>
+        </label>
         <textarea
           id="jobDescription"
           value={jobDescription}
